@@ -59,8 +59,19 @@ class Site:
                     index (str): Site tem apenas uma página
         """
         try:
-            ultima_pagina = int(self.soup.find('li', class_='current').text.strip()[-2:].strip())
+            paginas = int(self.soup.find('li', class_='current').text.strip()[-2:].strip())
         except AttributeError as e:
-            ultima_pagina = 'index'
+            paginas = 'index'
 
-        return ultima_pagina
+        return paginas
+
+    def __achar_elemento_root(self):
+        """Localiza a tag que será utilizada como elemento root para retornar as informações pertinentes aos livros
+
+                Retorna:
+                    articles (str): Elemento root da lista de livros
+        """
+        all_books = self.soup.find('ol')
+        articles = all_books.find_all('article')  # os dados dos livros estão dentro de uma tag article, dentro da ol
+
+        return articles
