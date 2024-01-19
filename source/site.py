@@ -1,15 +1,15 @@
 import requests
 from bs4 import BeautifulSoup
 from tqdm import tqdm
-import pandas as pd
 import os
-import time
+# import time
 
 
 class Site:
     """Representa um site que pode ser acessado, analisado e salvo.
 
-       Essa classe possui métodos para acessar o site com requests, fazer webscraping com beautiful soup e gerar um csv ou json com os dados extraídos.
+       Essa classe possui métodos para acessar o site com requests,
+       fazer webscraping com beautiful soup e gerar um csv ou json com os dados extraídos.
 
        Atributos:
            __url (str): A URL do site.
@@ -26,7 +26,10 @@ class Site:
                 Parâmetros:
                     url (str): A URL do site.
         """
+        self.lista_dicionario_livros = None
         self.soup = None
+        self.paginas = None
+        self.articles = None
         self.__url = url
 
     def carregar_site(self):
@@ -59,11 +62,11 @@ class Site:
                     index (str): Site tem apenas uma página
         """
         try:
-            paginas = int(self.soup.find('li', class_='current').text.strip()[-2:].strip())
-        except AttributeError as e:
-            paginas = 'index'
+            self.paginas = int(self.soup.find('li', class_='current').text.strip()[-2:].strip())
+        except AttributeError:
+            self.paginas = 'index'
 
-        return paginas
+        return self.paginas
 
     def __achar_elemento_root(self):
         """Localiza a tag que será utilizada como elemento root para retornar as informações pertinentes aos livros
@@ -72,6 +75,46 @@ class Site:
                     articles (str): Elemento root da lista de livros
         """
         all_books = self.soup.find('ol')
-        articles = all_books.find_all('article')  # os dados dos livros estão dentro de uma tag article, dentro da ol
+        self.articles = all_books.find_all('article')
 
-        return articles
+        return self.articles
+
+    def coletar_dados(self):
+        """Coleta dados dos livros.
+
+                Retorna:
+                    lista_dicionario_livros (list): lista de dicionários
+        """
+        max_tries = 5  # máximo de tentativas de conexão com cada página
+        lista_dicionario_livros = []
+
+        for n_pagina in tqdm(range(1, self.paginas + 1), 'Lendo páginas do site'):  # envolve o range com o tqdm
+            tentativa_atual = 1
+            while tentativa_atual <= max_tries:
+                try:
+                    response = requests.get(
+                        f'https://books.toscrape.com/catalogue/category/books_1/page-{n_pagina}.html')
+                    soup = BeautifulSoup(response.text, features='html.parser')
+
+                    # all_books = soup.find('ol')
+                    # articles = all_books.find_all('article')
+                    self.__achar_elemento_root()
+
+                    for article in self.articles:
+                        titulo = article.find('h3').find('a')['title']
+                        preco = article.find('p', class_='price_color').text[2:]
+                        classificacao = article.find('p')['class'][1]
+                        disponibilidade = article.find_all('p')[2].text.strip()
+
+                        lista_dicionario_livros.append(
+                            dict({'Título': titulo, 'Preço': preco, 'Classificaçao': classificacao,
+                                  'Disponibilidade': disponibilidade}))
+                    break
+                except ConnectionError as e:
+                    tentativa_atual += 1
+                    print(f'Página: {n_pagina} ------ {e}')
+                    # time.sleep(5)
+
+        self.lista_dicionario_livros = lista_dicionario_livros
+
+        return self.lista_dicionario_livros
