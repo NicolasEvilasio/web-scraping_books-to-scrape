@@ -4,9 +4,9 @@ from tqdm import tqdm
 import pandas as pd
 import os
 import time
+import source
 
-
-# 0 - Ajurdar o pandas para printar sem truncar as colunas
+# 0 - Ajustar o pandas para printar sem truncar as colunas
 pd.set_option('display.max_columns', None)
 pd.set_option('display.width', 1000)
 
